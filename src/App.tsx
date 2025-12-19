@@ -1,4 +1,3 @@
-import { Subject, ModuleTab, AIResponse } from './types';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Camera, 
@@ -14,12 +13,16 @@ import {
   CheckCircle2,
   Sparkles,
   ArrowRight,
-  ArrowLeft,
   ChevronRight
 } from 'lucide-react';
+
+// Import các cấu hình và dịch vụ
 import { SUBJECT_CONFIG, TAB_CONFIG } from './constants';
 import { generateStudyContent } from './services/geminiService';
 import MermaidChart from './components/MermaidChart';
+
+// Import Types - Cực kỳ quan trọng để tránh lỗi Build
+import { Subject, ModuleTab, AIResponse } from './types';
 
 const App: React.FC = () => {
   const [currentSubject, setCurrentSubject] = useState<Subject | null>(null);
@@ -39,7 +42,7 @@ const App: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const tabContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to active tab
+  // Tự động cuộn đến Tab đang chọn
   useEffect(() => {
     if (showResult && tabContainerRef.current) {
       const activeBtn = tabContainerRef.current.querySelector(`[data-tab="${activeTab}"]`) as HTMLElement;
@@ -128,13 +131,16 @@ const App: React.FC = () => {
     if (!currentSubject || (!inputText && !capturedImage)) return;
     setIsAiLoading(true);
     try {
-      const result = await generateStudyContent(currentSubject, inputText || "Hãy giải bài tập này cho tôi", capturedImage || undefined);
+      // Gửi Label môn học có dấu để AI hiểu tốt hơn
+      const subjectLabel = SUBJECT_CONFIG[currentSubject].label;
+      const result = await generateStudyContent(subjectLabel, inputText || "Hãy giải bài tập này cho tôi", capturedImage || undefined);
       setAiResponse(result);
       setShowResult(true);
       setSelectedOption(null);
       setShowMcqAnswer(false);
-    } catch (error) {
-      alert("Đã xảy ra lỗi khi kết nối với Symbiotic AI.");
+    } catch (error: any) {
+      console.error("Lỗi AI:", error);
+      alert(`Đã xảy ra lỗi: ${error.message || "Không thể kết nối với Symbiotic AI"}`);
     } finally {
       setIsAiLoading(false);
     }
@@ -150,7 +156,7 @@ const App: React.FC = () => {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
         {(Object.keys(SUBJECT_CONFIG) as Subject[]).map((subj) => {
-          const config = SUBJECT_CONFIG[subj as keyof typeof SUBJECT_CONFIG];
+          const config = SUBJECT_CONFIG[subj];
           return (
             <button
               key={subj}
@@ -218,7 +224,7 @@ const App: React.FC = () => {
 
                 {capturedImage && !isCameraActive && (
                   <div className="relative mb-8 max-w-sm mx-auto group">
-                    <img src={capturedImage} className="relative rounded-3xl border-4 border-white shadow-2xl w-full" />
+                    <img src={capturedImage} className="relative rounded-3xl border-4 border-white shadow-2xl w-full" alt="Captured" />
                     <button 
                       onClick={() => setCapturedImage(null)}
                       className="absolute -top-4 -right-4 bg-rose-500 text-white p-3 rounded-full shadow-2xl hover:scale-110 transition-all border-4 border-white"
@@ -246,6 +252,8 @@ const App: React.FC = () => {
 
                 <div className="space-y-8">
                   <textarea
+                    id="main-question-input"
+                    name="main-question-input"
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
                     placeholder="Nhập câu hỏi hoặc mô tả bài tập..."
@@ -291,10 +299,7 @@ const App: React.FC = () => {
 
           {showResult && aiResponse && (
             <div className="space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
-              {/* Unified Content Card */}
               <div className="bg-white rounded-[3rem] shadow-xl border border-slate-100 overflow-hidden flex flex-col">
-                
-                {/* Module Selection Slider Tray (Compact AT TOP) */}
                 <div className="bg-slate-50/80 border-b border-slate-100 py-4 relative">
                   <div className="flex items-center justify-between mb-3 px-6">
                     <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] flex items-center gap-2">
@@ -303,7 +308,6 @@ const App: React.FC = () => {
                   </div>
                   
                   <div className="relative flex items-center px-2 group/slider">
-                    {/* Compact Left Navigation Arrow */}
                     <button 
                       onClick={() => scrollTabs('left')}
                       className="shrink-0 bg-white/90 backdrop-blur-md p-2 rounded-xl shadow-md border border-slate-100 hover:bg-white hover:scale-110 active:scale-95 transition-all text-indigo-600 z-10"
@@ -314,25 +318,6 @@ const App: React.FC = () => {
                     <div 
                       ref={tabContainerRef}
                       className="flex gap-2.5 overflow-x-auto no-scrollbar scroll-smooth cursor-grab active:cursor-grabbing select-none px-4 py-1.5 w-full items-center"
-                      onMouseDown={(e) => {
-                        const el = tabContainerRef.current;
-                        if (!el) return;
-                        el.classList.add('grabbing');
-                        const startX = e.pageX - el.offsetLeft;
-                        const scrollLeft = el.scrollLeft;
-                        const onMouseMove = (moveEvent: MouseEvent) => {
-                          const x = moveEvent.pageX - el.offsetLeft;
-                          const walk = (x - startX) * 2;
-                          el.scrollLeft = scrollLeft - walk;
-                        };
-                        const onMouseUp = () => {
-                          window.removeEventListener('mousemove', onMouseMove);
-                          window.removeEventListener('mouseup', onMouseUp);
-                          el.classList.remove('grabbing');
-                        };
-                        window.addEventListener('mousemove', onMouseMove);
-                        window.addEventListener('mouseup', onMouseUp);
-                      }}
                     >
                       {(Object.keys(TAB_CONFIG) as ModuleTab[]).map((tab) => (
                         <button
@@ -349,15 +334,12 @@ const App: React.FC = () => {
                             : 'bg-white text-slate-500 hover:text-indigo-600 border-slate-100 hover:border-indigo-100 shadow-sm'
                           }`}
                         >
-                          <span className={`${activeTab === tab ? 'scale-110' : 'scale-100'} transition-transform duration-300`}>
-                            {TAB_CONFIG[tab].icon}
-                          </span>
+                          {TAB_CONFIG[tab].icon}
                           {TAB_CONFIG[tab].label}
                         </button>
                       ))}
                     </div>
 
-                    {/* Compact Right Navigation Arrow */}
                     <button 
                       onClick={() => scrollTabs('right')}
                       className="shrink-0 bg-white/90 backdrop-blur-md p-2 rounded-xl shadow-md border border-slate-100 hover:bg-white hover:scale-110 active:scale-95 transition-all text-indigo-600 z-10"
@@ -367,14 +349,10 @@ const App: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Content Area */}
                 <div className="p-8 md:p-14 min-h-[450px]">
                   {activeTab === ModuleTab.SPEED ? (
                     <div className="space-y-12 animate-in fade-in duration-500">
                       <div className="bg-indigo-50/50 p-12 rounded-[2.5rem] border-2 border-indigo-100 relative group overflow-hidden shadow-inner">
-                        <div className="absolute top-0 right-0 p-8 opacity-5">
-                          <Zap className="w-32 h-32 text-indigo-900" />
-                        </div>
                         <h4 className="text-[11px] font-black text-indigo-600 uppercase tracking-[0.4em] mb-8 flex items-center gap-3">
                           <CheckCircle2 className="w-5 h-5" /> Đáp án đề xuất
                         </h4>
@@ -386,7 +364,7 @@ const App: React.FC = () => {
                       <div className="pt-10 border-t border-slate-50">
                         <h4 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-10 flex items-center gap-3">
                            <div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div>
-                           Câu hỏi luyện tập (Củng cố kiến thức)
+                           Câu hỏi luyện tập
                         </h4>
                         <p className="text-2xl font-bold text-slate-800 mb-10 leading-relaxed">{aiResponse.speed.similar.question}</p>
                         
@@ -459,10 +437,8 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Mindmap Section */}
               <MermaidChart chart={aiResponse.mermaid} />
 
-              {/* Action Area */}
               <div className="flex justify-center pt-8 pb-20">
                 <button 
                   onClick={resetState}
@@ -476,19 +452,23 @@ const App: React.FC = () => {
           )}
         </main>
 
-        {/* Floating Query Footer */}
         {showResult && (
           <footer className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-3xl border-t border-slate-100 p-6 md:p-8 shadow-[0_-20px_50px_rgba(0,0,0,0.06)] z-40 animate-in slide-in-from-bottom-full duration-500">
             <div className="max-w-4xl mx-auto flex items-center gap-6">
               <div className="flex-1 relative group">
                 <input 
-                 id="footer-chat-input" 
+                  id="footer-chat-input" 
                   name="footer-chat-input"
                   type="text" 
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
                   placeholder="Hỏi AI thêm về nội dung bài học này..." 
                   className="w-full py-6 px-10 bg-slate-100 rounded-full text-lg font-bold placeholder:text-slate-400 focus:outline-none focus:ring-8 focus:ring-indigo-500/10 border-2 border-transparent focus:border-indigo-500/20 shadow-inner transition-all group-hover:bg-slate-200/50"
                 />
-                <button className="absolute right-6 top-1/2 -translate-y-1/2 p-4 text-indigo-600 hover:scale-125 transition-transform duration-300">
+                <button 
+                  onClick={handleSubmit}
+                  className="absolute right-6 top-1/2 -translate-y-1/2 p-4 text-indigo-600 hover:scale-125 transition-transform duration-300"
+                >
                   <Send className="w-8 h-8" />
                 </button>
               </div>
