@@ -1,3 +1,4 @@
+import { Subject, ModuleTab, AIResponse } from './types';
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Camera, 
