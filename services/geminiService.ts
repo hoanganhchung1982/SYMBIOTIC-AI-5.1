@@ -1,80 +1,60 @@
-// Sửa import từ @google/genai thành @google/generative-ai
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+// SỬA ĐƯỜNG DẪN: Nhảy ra ngoài thư mục services để tìm types.ts
 import { AIResponse } from "../types";
 
-// Vite bắt buộc dùng tiền tố VITE_ để nạp biến từ Vercel
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "";
+const genAI = new GoogleGenerativeAI("AIZA..."); // Thay API Key của bạn vào đây
 
-export const generateStudyContent = async (subject: string, prompt: string, image?: string): Promise<AIResponse> => {
-  if (!API_KEY) throw new Error("API Key chưa được cấu hình.");
+export const generateStudyContent = async (subject: string, prompt: string, imageBase64?: string): Promise<AIResponse> => {
+  // BẮT BUỘC dùng apiVersion: 'v1beta' để hỗ trợ responseSchema
+  const model = genAI.getGenerativeModel({ 
+    model: "gemini-1.5-flash",
+  }, { apiVersion: 'v1beta' });
 
-  // 2. Khởi tạo SDK đúng cách
-  const genAI = new GoogleGenerativeAI(API_KEY);
-  
-  // 3. Cấu hình Model với Schema để ép AI trả về JSON chuẩn
-   // Phải có apiVersion: 'v1beta' thì mới hết lỗi "Unknown name systemInstruction"
-const model = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-flash",
-  apiVersion: 'v1beta' 
-});
-  
-    generationConfig: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: SchemaType.OBJECT,
-        properties: {
-          speed: {
-            type: SchemaType.OBJECT,
-            properties: {
-              answer: { type: SchemaType.STRING },
-              similar: {
-                type: SchemaType.OBJECT,
-                properties: {
-                  question: { type: SchemaType.STRING },
-                  options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
-                  correctIndex: { type: SchemaType.NUMBER }
-                },
-                required: ["question", "options", "correctIndex"]
-              }
+  const generationConfig = {
+    responseMimeType: "application/json",
+    responseSchema: {
+      type: SchemaType.OBJECT,
+      properties: {
+        speed: {
+          type: SchemaType.OBJECT,
+          properties: {
+            answer: { type: SchemaType.STRING },
+            similar: {
+              type: SchemaType.OBJECT,
+              properties: {
+                question: { type: SchemaType.STRING },
+                options: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+                correctIndex: { type: SchemaType.NUMBER },
+              },
+              required: ["question", "options", "correctIndex"],
             },
-            required: ["answer", "similar"]
           },
-          socratic: { type: SchemaType.STRING },
-          notebooklm: { type: SchemaType.STRING },
-          perplexity: { type: SchemaType.STRING },
-          tools: { type: SchemaType.STRING },
-          mermaid: { type: SchemaType.STRING }
+          required: ["answer", "similar"],
         },
-        required: ["speed", "socratic", "notebooklm", "perplexity", "tools", "mermaid"]
-      }
-    }
-  });
+        mermaid: { type: SchemaType.STRING },
+        step: { type: SchemaType.STRING },
+        deep: { type: SchemaType.STRING },
+        exam: { type: SchemaType.STRING },
+      },
+      required: ["speed", "mermaid", "step", "deep", "exam"],
+    },
+  };
 
-  const systemInstruction = `Bạn là Symbiotic AI Pro - AI Trợ lý Giáo dục cho học sinh Việt Nam. 
-  Phân tích môn ${subject}. TUYỆT ĐỐI KHÔNG dùng dấu sao (*). Trả về JSON theo cấu trúc yêu cầu.`;
-
-  const parts: any[] = [{ text: prompt }];
-  if (image) {
-    const base64Data = image.includes(",") ? image.split(",")[1] : image;
-    parts.push({
+  const contents = [];
+  if (imageBase64) {
+    contents.push({
       inlineData: {
         mimeType: "image/jpeg",
-        data: base64Data
-      }
+        data: imageBase64.split(",")[1],
+      },
     });
   }
+  contents.push({ text: `Môn học: ${subject}. Yêu cầu: ${prompt}` });
 
-  // 4. Sửa lại cách gọi Content (Sử dụng đúng cấu trúc nội dung)
-  try {
-    const result = await model.generateContent({
-      contents: [{ role: "user", parts }],
-      systemInstruction: { role: "system", parts: [{ text: systemInstruction }] }
-    });
+  const result = await model.generateContent({
+    contents: [{ role: "user", parts: contents }],
+    generationConfig,
+  });
 
-    const responseText = result.response.text();
-    return JSON.parse(responseText) as AIResponse;
-  } catch (error) {
-    console.error("Lỗi AI hoặc Parse JSON:", error);
-    throw new Error("Đã xảy ra lỗi khi kết nối với Symbiotic AI.");
-  }
+  return JSON.parse(result.response.text());
 };
