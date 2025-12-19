@@ -16,13 +16,13 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-// Import các cấu hình và dịch vụ
-import { SUBJECT_CONFIG, TAB_CONFIG } from './constants';
-import { generateStudyContent } from './services/geminiService';
-import MermaidChart from './components/MermaidChart';
+// SỬA ĐƯỜNG DẪN: Thêm "../" để nhảy ra khỏi thư mục src
+import { SUBJECT_CONFIG, TAB_CONFIG } from '../constants';
+import { generateStudyContent } from '../services/geminiService';
+import MermaidChart from '../components/MermaidChart';
+import { Subject, ModuleTab, AIResponse } from '../types';
 
-// Import Types - Cực kỳ quan trọng để tránh lỗi Build
-import { Subject, ModuleTab, AIResponse } from './types';
+const App: React.FC = () => {
 
 const App: React.FC = () => {
   const [currentSubject, setCurrentSubject] = useState<Subject | null>(null);
