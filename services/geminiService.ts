@@ -1,16 +1,20 @@
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
-// SỬA ĐƯỜNG DẪN: Nhảy ra ngoài thư mục services để tìm types.ts
+// Nhảy ra ngoài để tìm types.ts theo ảnh image_4b2c3e.png
 import { AIResponse } from "../types";
 
-const genAI = new GoogleGenerativeAI("AIZA..."); // Thay API Key của bạn vào đây
+const genAI = new GoogleGenerativeAI("AIZA..."); // Dán API Key chuẩn của bạn vào đây
 
 export const generateStudyContent = async (subject: string, prompt: string, imageBase64?: string): Promise<AIResponse> => {
-  // BẮT BUỘC dùng apiVersion: 'v1beta' để hỗ trợ responseSchema
+  // Sử dụng v1beta để hỗ trợ JSON Schema
   const model = genAI.getGenerativeModel({ 
     model: "gemini-1.5-flash",
   }, { apiVersion: 'v1beta' });
 
   const generationConfig = {
+    temperature: 1,
+    topP: 0.95,
+    topK: 40,
+    maxOutputTokens: 8192,
     responseMimeType: "application/json",
     responseSchema: {
       type: SchemaType.OBJECT,
@@ -40,21 +44,22 @@ export const generateStudyContent = async (subject: string, prompt: string, imag
     },
   };
 
-  const contents = [];
+  const parts: any[] = [{ text: `Môn học: ${subject}. Yêu cầu: ${prompt}` }];
+  
   if (imageBase64) {
-    contents.push({
+    parts.push({
       inlineData: {
         mimeType: "image/jpeg",
         data: imageBase64.split(",")[1],
       },
     });
   }
-  contents.push({ text: `Môn học: ${subject}. Yêu cầu: ${prompt}` });
 
   const result = await model.generateContent({
-    contents: [{ role: "user", parts: contents }],
+    contents: [{ role: "user", parts }],
     generationConfig,
   });
 
-  return JSON.parse(result.response.text());
+  const responseText = result.response.text();
+  return JSON.parse(responseText);
 };
