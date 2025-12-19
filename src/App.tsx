@@ -481,8 +481,7 @@ const App: React.FC = () => {
             <div className="max-w-4xl mx-auto flex items-center gap-6">
               <div className="flex-1 relative group">
                 <input 
-                  <input 
-                  id="footer-chat-input" 
+                 id="footer-chat-input" 
                   name="footer-chat-input"
                   type="text" 
                   placeholder="Hỏi AI thêm về nội dung bài học này..." 
